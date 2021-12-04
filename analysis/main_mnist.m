@@ -1,7 +1,7 @@
 
 
-testing_data = mnist_import('../mnist_testing.json');
-nn = nn_import('../ref/model_admm_paul_01.json');
+testing_data = mnist_import('../data/mnist_testing.json');
+nn = nn_import('../networks/mnist/model_admm_paul_01.json');
 
 [L,T] = nn_lipschitz(nn, 1e-9);
 

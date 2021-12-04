@@ -17,9 +17,9 @@ system =  struct('A', Ar, 'B', Br);
 
 bounds = [2.5 6]';
 
-nn1 = nn_import('../model_ipc_find.json');
-nn2 = nn_import('../model_ipc_final.json');
-nn3 = nn_import('../rcontroller_ipc.json');
+nn1 = nn_import('../networks/stability/model_ipc_find.json');
+nn2 = nn_import('../networks/stability/model_ipc_final.json');
+nn3 = nn_import('../networks/stability/rcontroller_ipc.json');
 
 [f1,ly1,~,~] = nn_analyse( nn1, system, @tanh, bounds );
 [f2,ly2,~,~] = nn_analyse( nn2, system, @tanh, bounds );
@@ -41,13 +41,26 @@ for i = 1:2
     legend('find', 'final', 'ref')
 end
 
+datacsv = table;
+
 figure
 hold on;
 plot_ellipse( nn1.lyapu );
 plot_ellipse( nn2.lyapu );
-plot_ellipse( nn3.lyapu )
-plot_ellipse( ly1 );
-plot_ellipse( ly2 );
-plot_ellipse( ly3 );
+plot_ellipse( nn3.lyapu );
+line1 = plot_ellipse( ly1 );
+line2 = plot_ellipse( ly2 );
+line3 = plot_ellipse( ly3 );
+
 legend('find (train)', 'final (train)', 'ref (train)', 'find', 'final', 'ref')
 hold off;
+
+
+datacsv.findx = line1(1,:)';
+datacsv.findy = line1(2,:)';
+datacsv.finalx = line2(1,:)';
+datacsv.finaly = line2(2,:)';
+datacsv.refx = line3(1,:)';
+datacsv.refy = line3(2,:)';
+
+writetable(datacsv, 'ivp_ellipse.csv', 'Delimiter', ',');

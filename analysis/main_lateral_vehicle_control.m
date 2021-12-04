@@ -50,9 +50,9 @@ system =  struct('A', Ac*dt + eye(4), 'B', Bc*dt);
 
 bounds = [2 5 1 5]';
 
-nn1 = nn_import('../model_vlc_find.json');
-nn2 = nn_import('../model_vlc_final.json');
-nn3 = nn_import('../rcontroller_vlc.json');
+nn1 = nn_import('../networks/stability/model_vlc_find_im.json');
+nn2 = nn_import('../networks/stability/model_vlc_final_im.json');
+nn3 = nn_import('../networks/stability/rcontroller_vlc.json');
 
 [f1,ly1,~,~]  = nn_analyse( nn1, system, @tanh, bounds );
 [f2,ly2,~,~]  = nn_analyse( nn2, system, @tanh, bounds );
@@ -67,6 +67,8 @@ range = [0 4];
 [t3,y3,u3] = simulate(system, @(x,t) nn_query(nn3,@tanh,x), x0, dt, range);
 %[t4,y4,u4] = simulate(system, @(x,t) nn_query(nn4,@tanh,x), x0, dt, range);
 
+simdata = table;
+
 figure;
 for i = 1:4
     subplot(4,1,i);
@@ -74,15 +76,41 @@ for i = 1:4
     legend('find', 'final', 'ref')
 end
 
+simdata.time = t1';
+
+simdata.findx = y1(1,:)';
+simdata.findy = y1(2,:)';
+simdata.findz = y1(3,:)';
+simdata.findw = y1(4,:)';
+simdata.findu = u1';
+
+simdata.finalx = y2(1,:)';
+simdata.finaly = y2(2,:)';
+simdata.finalz = y2(3,:)';
+simdata.finalw = y2(4,:)';
+simdata.finalu = u2';
+
+simdata.refx = y3(1,:)';
+simdata.refy = y3(2,:)';
+simdata.refz = y3(3,:)';
+simdata.refw = y3(4,:)';
+simdata.refu = u3';
+
+writetable(simdata, 'vlc_simulation.csv', 'Delimiter', ',');
+
+
+datacsv = table;
+
+
 figure
 subplot(1,2,1);
 hold on;
 plot_ellipse( nn1.lyapu(1:2,1:2) );
 plot_ellipse( nn2.lyapu(1:2,1:2) );
 plot_ellipse( nn3.lyapu(1:2,1:2) );
-plot_ellipse( ly1(1:2,1:2) );
-plot_ellipse( ly2(1:2,1:2) );
-plot_ellipse( ly3(1:2,1:2) );
+line1a = plot_ellipse( ly1(1:2,1:2) );
+line2a = plot_ellipse( ly2(1:2,1:2) );
+line3a = plot_ellipse( ly3(1:2,1:2) );
 legend('find (train)', 'final (train)', 'ref (train)', 'find', 'final', 'ref')
 hold off;
 subplot(1,2,2);
@@ -90,9 +118,26 @@ hold on;
 plot_ellipse( nn1.lyapu(3:4,3:4) );
 plot_ellipse( nn2.lyapu(3:4,3:4) );
 plot_ellipse( nn3.lyapu(3:4,3:4) );
-plot_ellipse( ly1(3:4,3:4) );
-plot_ellipse( ly2(3:4,3:4) );
-plot_ellipse( ly3(3:4,3:4) );
+line1b = plot_ellipse( ly1(3:4,3:4) );
+line2b = plot_ellipse( ly2(3:4,3:4) );
+line3b = plot_ellipse( ly3(3:4,3:4) );
 legend('find (train)', 'final (train)', 'ref (train)', 'find', 'final', 'ref')
 hold off;
+
+
+datacsv.findax = line1a(1,:)';
+datacsv.finday = line1a(2,:)';
+datacsv.finalax = line2a(1,:)';
+datacsv.finalay = line2a(2,:)';
+datacsv.refax = line3a(1,:)';
+datacsv.refay = line3a(2,:)';
+
+datacsv.findbx = line1b(1,:)';
+datacsv.findby = line1b(2,:)';
+datacsv.finalbx = line2b(1,:)';
+datacsv.finalby = line2b(2,:)';
+datacsv.refbx = line3b(1,:)';
+datacsv.refby = line3b(2,:)';
+
+writetable(datacsv, 'vlc_ellipse.csv', 'Delimiter', ',');
 
