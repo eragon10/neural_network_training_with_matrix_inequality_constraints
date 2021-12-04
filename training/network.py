@@ -458,6 +458,53 @@ class NeuralNetwork:
 
             return l
         
+        
+    @tf.function
+    def step_imitation(self, x, y, rho = 0.01):
+        '''
+            This function describes the update step during each iteration 
+            in the training process. Here all constraints come
+            together and will be applied to their barrier functions.
+            
+            We move forward first, then calculate gradients to move backwards.
+            
+            :param rho: value describing the value in front of the barrier
+                        functions
+            :param x:   training dataset, e.g. input dataset
+            :param y:   training dataset, e.g. target dataset
+        '''
+        
+        with tf.GradientTape() as tape:
+            
+            P, W = self.init()
+            Y = self.stability(P, W)
+            
+            c = self.regionofatraction(P)
+
+            objective = tf.square( self.query(x,W) - y )
+
+            l =  tf.math.reduce_sum( objective ) / tf.cast( tf.shape(objective)[1] , dtype=tf.float32 ) / 10.0
+            
+            # apply the loss function (squared error) with a weight
+            #o = tf.constant(2.0, dtype=tf.float32) * tf.square( r - y )
+            o =  l - rho * tf.linalg.logdet(Y)
+            for mat in c:
+                o = o - rho * tf.linalg.logdet( mat )
+
+
+            
+            # tell Tensorflow which variables should be updated
+            variables = self.pweights + [self.lyapu] + self.lambdas
+            gradients = tape.gradient(o, variables)
+            
+            # update the variables using the gradient decent optimizer
+            self.optimizer.apply_gradients(zip(gradients, variables))
+
+            # middleware execution for debug printing
+            self.train_loss(l)
+
+            return l
+        
     def fit(self, dataset, epochs):
         '''
         This fit function runs training.
@@ -468,16 +515,28 @@ class NeuralNetwork:
         '''
         template = 'Iteration: {}, Loss: {}'
         
-        
-        for rho in [0.01, 0.008]:
-            for epoch in range(epochs):
-                # execute training step
-                self.step( dataset['x0'], dataset['N'], rho=rho )
-            
-                if epoch % 1000 == 0:
-                    print( template.format( epoch, self.train_loss.result() ) )
+        # distinguish between imitation learning and 
+        # quadratic loss function learning
+        if 'x0' in dataset and 'N' in dataset:
+            for rho in [0.01, 0.008]:
+                for epoch in range(epochs):
+                    # execute training step
+                    self.step( dataset['x0'], dataset['N'], rho=rho )
                 
-                self.train_loss.reset_states()
+                    if epoch % 1000 == 0:
+                        print( template.format( epoch, self.train_loss.result() ) )
+                    
+                    self.train_loss.reset_states()
+        elif 'x' in dataset and 'y' in dataset:
+            for rho in [0.01, 0.008]:
+                for epoch in range(epochs):
+                    # execute training step
+                    self.step_imitation( dataset['x'], dataset['y'], rho=rho )
+                
+                    if epoch % 1000 == 0:
+                        print( template.format( epoch, self.train_loss.result() ) )
+                    
+                    self.train_loss.reset_states()
             
         
     def find(self, epochs, bound=-0.02, rho=0.01 ):
